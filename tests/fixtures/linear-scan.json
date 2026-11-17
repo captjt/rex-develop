@@ -1,0 +1,68 @@
+{
+  "data": {
+    "viewer": { "id": "user-me", "name": "Sam Rivera" },
+    "matching": {
+      "nodes": [
+        {
+          "id": "iss-142", "identifier": "ENG-142", "title": "Retry failed webhook deliveries",
+          "url": "https://linear.app/acme/issue/ENG-142/retry-failed-webhook-deliveries",
+          "branchName": "sam/eng-142-retry-failed-webhook-deliveries", "priority": 2, "updatedAt": "2026-11-17T10:00:00.000Z",
+          "state": { "name": "Todo", "type": "unstarted" },
+          "assignee": { "id": "user-me" },
+          "labels": { "nodes": [ { "name": "Agent" }, { "name": "backend" } ] },
+          "cycle": { "id": "cyc-9", "number": 9, "isActive": true },
+          "team": { "key": "ENG" }, "project": null,
+          "comments": { "nodes": [ { "id": "c1" }, { "id": "c2" } ] }
+        },
+        {
+          "id": "iss-150", "identifier": "ENG-150", "title": "Dead-letter queue for webhooks",
+          "url": "https://linear.app/acme/issue/ENG-150", "branchName": "sam/eng-150-dead-letter-queue",
+          "priority": 0, "updatedAt": "2026-11-16T09:00:00.000Z",
+          "state": { "name": "Todo", "type": "unstarted" },
+          "assignee": { "id": "user-me" },
+          "labels": { "nodes": [] },
+          "cycle": { "id": "cyc-9", "number": 9, "isActive": true },
+          "team": { "key": "ENG" }, "project": { "name": "Webhooks v2" },
+          "comments": { "nodes": [] }
+        },
+        {
+          "id": "iss-77", "identifier": "WEB-77", "title": "Show retry status on the deliveries page",
+          "url": "https://linear.app/acme/issue/WEB-77", "branchName": "sam/web-77-show-retry-status",
+          "priority": 3, "updatedAt": "2026-11-16T09:00:00.000Z",
+          "state": { "name": "Todo", "type": "unstarted" },
+          "assignee": { "id": "user-me" },
+          "labels": { "nodes": [ { "name": "agent" }, { "name": "dashboard" } ] },
+          "cycle": null,
+          "team": { "key": "WEB" }, "project": null,
+          "comments": { "nodes": [] }
+        }
+      ]
+    },
+    "tracked": {
+      "nodes": [
+        {
+          "id": "iss-142", "identifier": "ENG-142", "title": "Retry failed webhook deliveries",
+          "url": "https://linear.app/acme/issue/ENG-142/retry-failed-webhook-deliveries",
+          "branchName": "sam/eng-142-retry-failed-webhook-deliveries", "priority": 2, "updatedAt": "2026-11-17T10:00:00.000Z",
+          "state": { "name": "Todo", "type": "unstarted" },
+          "assignee": { "id": "user-me" },
+          "labels": { "nodes": [ { "name": "Agent" }, { "name": "backend" } ] },
+          "cycle": { "id": "cyc-9", "number": 9, "isActive": true },
+          "team": { "key": "ENG" }, "project": null,
+          "comments": { "nodes": [ { "id": "c1" }, { "id": "c2" } ] }
+        },
+        {
+          "id": "iss-120", "identifier": "ENG-120", "title": "Rate-limit the export endpoint",
+          "url": "https://linear.app/acme/issue/ENG-120", "branchName": "sam/eng-120-rate-limit-export",
+          "priority": 1, "updatedAt": "2026-11-17T11:00:00.000Z",
+          "state": { "name": "Canceled", "type": "canceled" },
+          "assignee": { "id": "user-other" },
+          "labels": { "nodes": [ { "name": "agent" } ] },
+          "cycle": null,
+          "team": { "key": "ENG" }, "project": null,
+          "comments": { "nodes": [] }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+# rex-develop: set up rex-develop, and run its actions from a shell. The
+# actions run under LuaJIT (scripts/cli.lua); the watcher runs in a Rex pane.
+set -euo pipefail
+
+# The checkout this script lives in, following symlinks.
+src=${BASH_SOURCE[0]}
+while [[ -L $src ]]; do
+	dir=$(cd -P "$(dirname "$src")" && pwd)
+	src=$(readlink "$src")
+	[[ $src == /* ]] || src=$dir/$src
+done
+root=$(cd -P "$(dirname "$src")/.." && pwd)
+
+config_dir=${REX_DEVELOP_CONFIG_DIR:-$HOME/.config/rex-develop}
+keychain_service=rex-develop-linear
+
+usage() {
+	cat <<EOF
+rex-develop: agents take your tracker's issues to PRs, and ask you what only you can decide.
+
+Setup:
+  rex-develop setup              create the config from the example
+  rex-develop setup-linear       store your Linear API key in the Keychain
+  rex-develop doctor             check the config, the tools, the repos, and Linear
+
+The watcher:
+  rex-develop up | down          start or stop it (in the rex-develop Rex session)
+  rex-develop pause | resume     stop or resume starting new tasks
+  rex-develop check              check the trackers now
+  rex-develop scan               what a check would do now, without doing it
+  rex-develop status             every task, and what needs you
+
+What waits on you (rex-inbox sends each as a message, when it runs):
+  rex-develop ls                 every ask: gates (start, plan, preview, open, …) and decisions (D1, …)
+  rex-develop answer TASK [WHAT] CHOICE [TEXT]
+                                 answer one: rex-develop answer ENG-142 plan Approve
+                                             rex-develop answer ENG-142 D1 2 "but cap it at 3"
+  rex-develop answer TASK [WHAT] --text TEXT
+                                 answer in your own words: Revise, Needs work, or another answer
+
+A task:
+  rex-develop start ISSUE        take an issue by hand: ENG-142, or owner/name#45
+  rex-develop discard TASK       stop it and remove its worktree (its branch stays)
+  rex-develop focus TASK         show its tab in Rex
+
+Any action, by name:
+  rex-develop do ACTION [key=value ...]     (rex-develop do --list)
+
+The checkout: $root
+EOF
+}
+
+die() {
+	printf 'rex-develop: %s\n' "$*" >&2
+	exit 1
+}
+
+command -v luajit >/dev/null || die "luajit isn't on PATH: brew install luajit"
+
+act() {
+	luajit "$root/scripts/cli.lua" "$@"
+}
+
+need_jq() {
+	command -v jq >/dev/null || die "jq isn't on PATH: brew install jq"
+}
+
+setup() {
+	mkdir -p "$config_dir/briefs"
+	if [[ -f $config_dir/config.lua ]]; then
+		echo "config: $config_dir/config.lua (kept)"
+	else
+		cp "$root/examples/config.lua" "$config_dir/config.lua"
+		echo "config: created $config_dir/config.lua from the example. Add your trackers and repos to it."
+	fi
+	echo
+	echo "Then: rex-develop setup-linear (for Linear), rex-develop doctor, and rex-develop up."
+}
+
+setup_linear() {
+	echo "Paste a Linear personal API key (Settings, Security & access, Personal API keys)."
+	echo "It needs read access only. The Keychain asks for it twice."
+	security add-generic-password -U -s "$keychain_service" -a "${USER:-rex-develop}" -w
+	echo "stored in the Keychain as $keychain_service"
+}
+
+doctor() {
+	need_jq
+	local out
+	out=$(act develop_doctor) || die "the doctor couldn't run"
+	jq -r '.checks[] | (if .ok then "ok   " else "FAIL " end) + .check + (if .detail then ": " + .detail else "" end)' <<<"$out"
+	jq -e .ok <<<"$out" >/dev/null
+}
+
+show_status() {
+	need_jq
+	act develop_status | jq -r '
+		(if .paused then "Paused\n" else "" end) +
+		"Last check: \(.last_scan_at // "never")   watcher: \(.watcher_at // "not running")   rex-inbox: \(if .inbox then "on" else "off" end)\n",
+		(.tasks | if length == 0 then "No tasks yet." else .[] |
+			"\(.label)\t\(.state)\(if .phase then " · " + .phase else "" end)\t\(.title // "")\(if (.asks | length) > 0 then "\n\twaiting on you: " + (.asks | join(", ")) else "" end)\(if .pr then "\n\t" + .pr else "" end)" end),
+		(.attention | if length > 0 then "\nNeeds you:", (.[] | "  \(.label): \(.text)") else empty end)'
+}
+
+show_asks() {
+	need_jq
+	act develop_asks | jq -r '
+		if length == 0 then "Nothing waits on you." else .[] |
+		"\(.label) \(.what)\(if .message_id then "  (rex-inbox #\(.message_id))" else "" end)\n  \(.subject)\n  answers: \(.options // [] | to_entries | map("\(.key + 1). \(.value)") | join("   "))\n" end'
+}
+
+answer() {
+	[[ $# -ge 2 ]] || die "usage: rex-develop answer TASK [WHAT] CHOICE [TEXT], or TASK [WHAT] --text TEXT"
+	local task=$1
+	shift
+	local -a args=("task=$task")
+	if [[ $1 =~ ^(start|repo|not_ready|plan|preview|open|issue_changed|D[0-9]+)$ ]]; then
+		args+=("what=$1")
+		shift
+	fi
+	if [[ ${1:-} == --text ]]; then
+		shift
+		[[ $# -ge 1 ]] || die "--text needs the words"
+		args+=("text=$*")
+	else
+		[[ $# -ge 1 ]] || die "give a choice: a number or an option's label"
+		args+=("choice=$1")
+		shift
+		[[ $# -eq 0 ]] || args+=("text=$*")
+	fi
+	act develop_answer "${args[@]}" | { command -v jq >/dev/null && jq -r '"\(.task) \(.what): \(.choice // "your words") (queued; \(.note))"' || cat; }
+}
+
+cmd=${1:-}
+[[ $# -gt 0 ]] && shift
+case $cmd in
+setup) setup ;;
+setup-linear) setup_linear ;;
+doctor) doctor ;;
+up) act develop_up ;;
+down) act develop_down ;;
+pause) act develop_pause ;;
+resume) act develop_resume ;;
+check) act develop_check ;;
+scan) act develop_scan "$@" ;;
+status) show_status ;;
+ls | asks) show_asks ;;
+answer) answer "$@" ;;
+start)
+	[[ $# -eq 1 ]] || die "usage: rex-develop start ENG-142 (or owner/name#45)"
+	act develop_start "issue=$1"
+	;;
+discard)
+	[[ $# -eq 1 ]] || die "usage: rex-develop discard TASK"
+	act develop_discard "task=$1"
+	;;
+focus)
+	[[ $# -eq 1 ]] || die "usage: rex-develop focus TASK"
+	act develop_focus "task=$1"
+	;;
+watch) exec luajit "$root/scripts/watch.lua" ;;
+do)
+	[[ $# -ge 1 ]] || die "usage: rex-develop do ACTION [key=value ...]"
+	act "$@"
+	;;
+"" | -h | --help | help) usage ;;
+*) die "no command $cmd; rex-develop --help lists them" ;;
+esac

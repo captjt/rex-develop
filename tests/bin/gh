@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# A stand-in for gh in tests/e2e.sh. It answers from, and records into,
+# $REX_DEVELOP_STATE_DIR/../gh: pr-body.md and pr-args.txt from the PR it
+# opens, and pr-state (OPEN, MERGED, CLOSED) for the PR's state.
+set -euo pipefail
+d=${REX_DEVELOP_STATE_DIR:?}/../gh
+mkdir -p "$d"
+case "${1:-} ${2:-}" in
+"api user") echo tester ;;
+"repo view") echo PRIVATE ;;
+"pr create")
+	printf '%s\n' "$@" >"$d/pr-args.txt"
+	cat >"$d/pr-body.md"
+	echo "https://github.com/acme/demo/pull/7"
+	;;
+"pr list") ;;
+"pr view") cat "$d/pr-state" 2>/dev/null || echo OPEN ;;
+*)
+	echo "fake gh: $*" >&2
+	exit 1
+	;;
+esac
