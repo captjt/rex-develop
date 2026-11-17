@@ -758,7 +758,8 @@ local function needs(list, e, kind, text, what)
   list[#list + 1] = { task = e.id, label = ledger.label(e), title = e.title, kind = kind, what = what or kind, text = text }
 end
 
-local function plan_message(e, md)
+-- The plan's message: { subject, body }.
+function M.plan_message(e, md)
   local open = {}
   for id, d in pairs(e.decisions or {}) do
     if not d.answer then
@@ -771,7 +772,20 @@ local function plan_message(e, md)
   local subject = decisions.cut(string.format("%s · plan · %d acceptance item%s, %d decision%s open%s",
     ledger.label(e), n_acc, n_acc == 1 and "" or "s", #open, #open == 1 and "" or "s",
     e.plan_version > 1 and (" · revision " .. (e.plan_version - 1)) or ""), 140)
-  local body = { util.trim(md), "" }
+  -- The plan as a message reads as text: each section under its name,
+  -- the builder's own Decisions list left to the decisions' own messages.
+  local body = {}
+  for _, sec in ipairs(plan.sections(md)) do
+    if sec.title:lower() ~= "decisions" and sec.body ~= "" then
+      if not sec.body:find("\n") and not sec.body:match("^%s*[-*%d]") then
+        body[#body + 1] = sec.title .. ": " .. sec.body
+      else
+        body[#body + 1] = sec.title .. ":"
+        body[#body + 1] = sec.body
+      end
+      body[#body + 1] = ""
+    end
+  end
   if #open > 0 then
     body[#body + 1] = "Open decisions (each is its own message). Approve accepts the recommendation for any you haven't answered:"
     for _, l in ipairs(open) do
@@ -1015,7 +1029,7 @@ function M.advance(e, session, ctx, attention)
       if c.gates.plan == "auto" then
         approve_plan(e, session, nil)
       else
-        local subject, body = plan_message(e, md)
+        local subject, body = M.plan_message(e, md)
         M.ask(e, "plan", "gate", subject, body, GATES.plan, ctx)
       end
     elseif st:match("^NOT_READY") and free then
@@ -1077,8 +1091,8 @@ function M.advance(e, session, ctx, attention)
       M.close_pane(session, e.checker_pane)
       M.close_pane(session, e.pane)
       ledger.append_event({ kind = "opened", task = e.key, note = res.url })
-      tell(e, decisions.cut(string.format("%s · opened %s#%d", label, select(2, util.split_slug(e.repo)) or e.repo, res.number), 140),
-        string.format("%s\n\n%s", e.title or "", res.url), ctx)
+      local subject, body = M.opened_message(e, res)
+      tell(e, subject, body, ctx)
     else
       e.open_error = tostring(res)
       needs(attention, e, "error", "opening the PR failed: " .. e.open_error, "opening")
@@ -1094,14 +1108,25 @@ function M.advance(e, session, ctx, attention)
   end
 end
 
+-- The offer of a cycle issue: { subject, body }.
+function M.start_message(e)
+  return decisions.cut(string.format("%s · in your cycle · %s", ledger.label(e), e.title or ""), 140),
+    string.format("It's assigned to you and in the active cycle. Start has an agent plan it, and you approve the plan before any code is written. Skip leaves it to you. Not this cycle asks again next cycle.\n\n%s",
+      e.url or "")
+end
+
+-- The note that a task's PR opened: { subject, body }.
+function M.opened_message(e, pr)
+  return decisions.cut(string.format("%s · opened %s#%d", ledger.label(e), select(2, util.split_slug(e.repo)) or e.repo, pr.number), 140),
+    string.format("%s\n\n%s", e.title or "", pr.url)
+end
+
 -- A task waiting to start: offer it, ask for its repo, or say it's queued.
 function M.advance_waiting(e, ctx)
   local label = ledger.label(e)
   if e.state == "offered" and not (e.asks and e.asks.start) then
-    M.ask(e, "start", "gate", decisions.cut(string.format("%s · in your cycle · %s", label, e.title or ""), 140),
-      string.format("%s\n%s\n\nIt's assigned to you and in the active cycle. Start has an agent plan it; you approve the plan before any code is written. Skip leaves it to you. Not this cycle asks again next cycle.",
-        e.title or "", e.url or ""),
-      GATES.start, ctx)
+    local subject, body = M.start_message(e)
+    M.ask(e, "start", "gate", subject, body, GATES.start, ctx)
   elseif e.state == "queued" and not e.repo and e.repo_choices and not (e.asks and e.asks.repo) then
     M.ask(e, "repo", "gate", decisions.cut(string.format("%s · which repo? · %s", label, e.title or ""), 140),
       string.format("%s\n%s\n\nIts team maps to more than one repo, and nothing on the issue picks one.", e.title or "", e.url or ""),

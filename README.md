@@ -1,5 +1,7 @@
 # rex-develop
 
+<img src="docs/images/social-preview.png" alt="Rex Develop: when an issue is yours, agents plan it, build it, and check it against the plan, and ask you only what you alone can decide. An issue labeled for agents, or one in your cycle, goes to agents that plan, build and check it, and you decide. Beside it, Rex Inbox's menu bar panel with rex-develop's messages: a plan to approve, revise or discard, two decisions with their options as buttons, and an issue in the cycle to start or skip.">
+
 Agent development for the issues assigned to you, run in
 [Rex](https://www.superlogical.com/rex). When an issue in your tracker is
 yours to build (labeled for agents, or in your active cycle), a builder
@@ -213,6 +215,26 @@ rex-develop pause | resume | check | up | down
 
 While the rex-inbox hub runs, every ask goes to you as a message from the
 watcher's pane, with its answers as buttons, and your reply is the answer.
+
+<table>
+  <tr>
+    <td valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/inbox-dark.png">
+        <img src="docs/images/inbox-light.png" width="400" alt="Rex Inbox's menu bar panel with rex-develop's messages, newest first: ENG-142's plan with Approve, Revise and Discard; ENG-142's decision D1, whether retries cover 4xx responses, with its two options as buttons; ENG-138's decision D2, stream the export or page it; and ENG-150, in your cycle, with Start, Skip and Not this cycle">
+      </picture>
+    </td>
+    <td valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/images/phone-dark.png">
+        <img src="docs/images/phone-light.png" width="260" alt="The same plan on the phone, with Approve, Revise and Discard, and the decision below it">
+      </picture>
+    </td>
+  </tr>
+</table>
+
+<sub>The issues are made up. <code>scripts/screenshots.sh</code> renders these again from a made-up world.</sub>
+
 A reply that comes after the ask moved on gets told so, and changes
 nothing. Without rex-inbox, the asks show as program status on the
 watcher's tab in Rex, and `rex-develop ls` and `answer` do the rest.
@@ -228,12 +250,12 @@ Everything lives in plain files under `~/.local/state/rex-develop/`.
 
 ```
 bin/                    rex-develop, rex-agent
-scripts/                the watcher and the CLI, under LuaJIT
+scripts/                the watcher and the CLI, under LuaJIT; the screenshots
 lua/rex_develop/        config, ledger, rules, trackers, tasks, decisions, plan, inbox, agents, watcher, actions
 briefs/                 the prompts: ground rules, plan, build, check
 guides/                 the plan's format and the PR's style
 tests/                  luajit tests/*.lua; tests/e2e.sh in Rex
-docs/                   the ledger, and decisions
+docs/                   the ledger, decisions, and the images
 ```
 
 ## Tests
